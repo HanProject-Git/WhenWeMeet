@@ -1,12 +1,11 @@
 package com.whenwemeet.result.controller;
 
-import com.whenwemeet.result.dto.DateCountResponse;
+import com.whenwemeet.result.dto.DateParticipantResponse;
 import com.whenwemeet.result.service.ResultService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 import java.time.LocalDate;
 
-import java.time.LocalDate;
 import java.util.List;
 
 @RestController
@@ -17,7 +16,7 @@ public class ResultController {
     private final ResultService resultService;
 
     @GetMapping
-    public List<DateCountResponse> getResult(
+    public List<DateParticipantResponse> getResult(
             @PathVariable Long roomId
     ) {
         return resultService.getResult(roomId);

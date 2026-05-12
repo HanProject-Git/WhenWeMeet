@@ -5,7 +5,7 @@ import jakarta.validation.constraints.NotNull;
 
 import java.time.LocalDate;
 
-public record CreateRoomRequest(
+public record UpdateRoomRequest(
         @NotBlank(message = "제목은 필수입니다.")
         String title,
 
@@ -16,6 +16,5 @@ public record CreateRoomRequest(
 
         @NotNull(message = "종료일은 필수입니다.")
         LocalDate endDate
-
 ) {
 }

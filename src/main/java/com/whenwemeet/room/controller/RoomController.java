@@ -4,9 +4,12 @@ import com.whenwemeet.room.dto.CreateRoomRequest;
 import com.whenwemeet.room.service.RoomService;
 import lombok.RequiredArgsConstructor;
 import com.whenwemeet.room.dto.RoomResponse;
+import com.whenwemeet.room.dto.UpdateRoomRequest;
 
 import org.springframework.web.bind.annotation.*;
+import com.whenwemeet.room.dto.UpdateRoomRequest;
 import jakarta.validation.Valid;
+import jakarta.servlet.http.HttpSession;
 
 @RestController
 @RequiredArgsConstructor
@@ -17,9 +20,16 @@ public class RoomController {
 
     @PostMapping
     public Long createRoom(
-           @Valid @RequestBody CreateRoomRequest request
+            @Valid @RequestBody CreateRoomRequest request,
+            HttpSession session
     ) {
-        return roomService.createRoom(request);
+        Long memberId = (Long) session.getAttribute("LOGIN_MEMBER_ID");
+
+        if (memberId == null) {
+            throw new IllegalArgumentException("로그인이 필요합니다.");
+        }
+
+        return roomService.createRoom(request, memberId);
     }
 
     @GetMapping("/{roomId}")
@@ -35,4 +45,20 @@ public class RoomController {
     ) {
         return roomService.getRoomByInviteCode(inviteCode);
     }
+
+    @PutMapping("/{roomId}")
+    public RoomResponse updateRoom(
+            @PathVariable Long roomId,
+            @Valid @RequestBody UpdateRoomRequest request
+    ) {
+        return roomService.updateRoom(roomId, request);
+    }
+
+    @DeleteMapping("/{roomId}")
+    public void deleteRoom(
+            @PathVariable Long roomId
+    ) {
+        roomService.deleteRoom(roomId);
+    }
+
 }
