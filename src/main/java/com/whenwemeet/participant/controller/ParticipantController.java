@@ -48,4 +48,18 @@ public class ParticipantController {
     public List<ParticipantResponse> getRoomParticipants(@PathVariable Long roomId) {
         return participantService.getRoomParticipants(roomId);
     }
+
+    @DeleteMapping("/me")
+    public void leaveRoom(
+            @PathVariable Long roomId,
+            HttpSession session
+    ) {
+        Long memberId = (Long) session.getAttribute("LOGIN_MEMBER_ID");
+
+        if (memberId == null) {
+            throw new IllegalArgumentException("로그인이 필요합니다.");
+        }
+
+        participantService.leaveRoom(roomId, memberId);
+    }
 }

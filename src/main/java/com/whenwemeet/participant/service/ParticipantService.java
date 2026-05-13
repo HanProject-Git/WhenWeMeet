@@ -70,4 +70,21 @@ public class ParticipantService {
                 ))
                 .toList();
         }
+
+        @Transactional
+        public void leaveRoom(Long roomId, Long memberId) {
+        Room room = roomRepository.findById(roomId)
+                .orElseThrow(() -> new IllegalArgumentException("일정방을 찾을 수 없습니다."));
+
+        if (room.isOwner(memberId)) {
+                throw new IllegalArgumentException("방장은 방에서 나갈 수 없습니다. 방 삭제를 이용해주세요.");
+        }
+
+        Participant participant = participantRepository.findByRoomIdAndMemberId(roomId, memberId)
+                .orElseThrow(() -> new IllegalArgumentException("참여 중인 방이 아닙니다."));
+
+        availableDateRepository.deleteByParticipantId(participant.getId());
+
+        participantRepository.delete(participant);
+        }
 }

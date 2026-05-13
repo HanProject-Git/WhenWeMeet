@@ -260,7 +260,14 @@ function HomePage() {
       );
 
       if (!response.ok) {
-        alert("존재하지 않는 초대코드입니다.");
+        const errorData = await response.json().catch(() => null);
+        const message =
+          errorData?.message ||
+          (response.status === 500
+            ? "서버 오류가 발생했습니다. 백엔드 로그를 확인해주세요."
+            : "존재하지 않는 초대코드입니다.");
+
+        alert(message);
         return;
       }
 
@@ -453,13 +460,57 @@ function RoomPage() {
   const [dateCounts, setDateCounts] = useState([]);
   const [commonDates, setCommonDates] = useState([]);
   const [participants, setParticipants] = useState([]);
+  const [member, setMember] = useState(null);
+  const [editMode, setEditMode] = useState(false);
+  const [editForm, setEditForm] = useState({
+    title: "",
+    description: "",
+    startDate: "",
+    endDate: "",
+  });
 
   useEffect(() => {
     fetch(`http://localhost:8080/api/rooms/${roomId}`, {
       credentials: "include",
     })
-      .then((res) => res.json())
-      .then((data) => setRoom(data));
+      .then(async (res) => {
+
+        if (!res.ok) {
+
+          const errorData = await res.json().catch(() => null);
+
+          const message =
+            errorData?.message || "방 정보를 찾을 수 없습니다.";
+
+          alert(message);
+
+          navigate("/");
+
+          throw new Error(message);
+        }
+
+        return res.json();
+      })
+      .then((data) => {
+        setRoom(data);
+
+        setEditForm({
+          title: data.title,
+          description: data.description,
+          startDate: data.startDate,
+          endDate: data.endDate,
+        });
+      });
+
+    fetch("http://localhost:8080/api/auth/me", {
+      credentials: "include",
+    })
+      .then((res) => {
+        if (!res.ok) return null;
+        return res.json();
+      })
+      .then((data) => setMember(data))
+      .catch(() => setMember(null));
 
     fetch(`http://localhost:8080/api/rooms/${roomId}/result`, {
       credentials: "include",
@@ -497,6 +548,79 @@ function RoomPage() {
     return <div className="container">불러오는 중...</div>;
   }
 
+  console.log("room =", room);
+  console.log("member =", member);
+  console.log("ownerId =", room?.ownerId);
+  console.log("memberId =", member?.id);
+
+  const isOwner =
+    member &&
+    room &&
+    Number(room.ownerId) === Number(member.id);
+
+  const confirmDate = async (date) => {
+    const confirmed = window.confirm(`${date}로 일정을 확정하시겠습니까?`);
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `http://localhost:8080/api/rooms/${roomId}/confirm?date=${date}`,
+        {
+          method: "POST",
+          credentials: "include",
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+        alert(errorData?.message || "일정 확정 실패");
+        return;
+      }
+
+      alert("일정이 확정되었습니다.");
+
+      setRoom({
+        ...room,
+        confirmedDate: date,
+      });
+    } catch (err) {
+      alert("일정 확정 중 오류가 발생했습니다.");
+    }
+  };
+  
+  const updateRoom = async () => {
+    try {
+      const response = await fetch(
+        `http://localhost:8080/api/rooms/${roomId}`,
+        {
+          method: "PUT",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(editForm),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+        alert(errorData?.message || "방 수정 실패");
+        return;
+      }
+
+      const updatedRoom = await response.json();
+
+      setRoom(updatedRoom);
+      setEditMode(false);
+      alert("방 수정 완료");
+    } catch (err) {
+      alert("방 수정 중 오류가 발생했습니다.");
+    }
+  };
+
   const inviteUrl = `${window.location.origin}/invite/${room.inviteCode}`;
 
   const resultEvents = dateCounts.map((item) => ({
@@ -508,23 +632,142 @@ function RoomPage() {
     <div className="container">
       <h1>{room.title}</h1>
 
-      <div className="card">
-        <p>{room.description}</p>
+      {room.confirmedDate && (
+        <div className="card">
+          <h2>확정된 일정</h2>
+          <p>{room.confirmedDate}</p>
+        </div>
+      )}
+    {isOwner && (
+      <button
+        onClick={async () => {
 
-        <p>
-          기간: {room.startDate} ~ {room.endDate}
-        </p>
+          const confirmed = window.confirm(
+            "정말 이 방을 삭제하시겠습니까?"
+          );
 
-        <p>초대코드</p>
-        <input value={room.inviteCode} readOnly />
+          if (!confirmed) {
+            return;
+          }
 
-        <p>초대 링크</p>
-        <input value={inviteUrl} readOnly />
+          try {
 
-        <button onClick={() => navigate(`/invite/${room.inviteCode}`)}>
-          내 가능 날짜 수정하기
-        </button>
-      </div>
+            const response = await fetch(
+              `http://localhost:8080/api/rooms/${roomId}`,
+              {
+                method: "DELETE",
+                credentials: "include",
+              }
+            );
+
+            if (!response.ok) {
+
+              const text = await response.text();
+
+              alert(text || "방 삭제 실패");
+              return;
+            }
+
+            alert("방 삭제 완료");
+
+            navigate("/mypage");
+
+          } catch (err) {
+            alert("방 삭제 중 오류가 발생했습니다.");
+          }
+        }}
+      >
+        방 삭제
+      </button>
+    )}
+
+    <div className="card">
+
+      {editMode ? (
+        <>
+          <label>제목</label>
+          <input
+            value={editForm.title}
+            onChange={(e) =>
+              setEditForm({
+                ...editForm,
+                title: e.target.value,
+              })
+            }
+          />
+
+          <label>설명</label>
+          <textarea
+            value={editForm.description}
+            onChange={(e) =>
+              setEditForm({
+                ...editForm,
+                description: e.target.value,
+              })
+            }
+          />
+
+          <label>시작일</label>
+          <input
+            type="date"
+            value={editForm.startDate}
+            onChange={(e) =>
+              setEditForm({
+                ...editForm,
+                startDate: e.target.value,
+              })
+            }
+          />
+
+          <label>종료일</label>
+          <input
+            type="date"
+            value={editForm.endDate}
+            onChange={(e) =>
+              setEditForm({
+                ...editForm,
+                endDate: e.target.value,
+              })
+            }
+          />
+
+          <button onClick={updateRoom}>
+            수정 저장
+          </button>
+
+          <button onClick={() => setEditMode(false)}>
+            취소
+          </button>
+        </>
+      ) : (
+        <>
+          <p>{room.description}</p>
+
+          <p>
+            기간: {room.startDate} ~ {room.endDate}
+          </p>
+
+          <p>초대코드</p>
+          <input value={room.inviteCode} readOnly />
+
+          <p>초대 링크</p>
+          <input value={inviteUrl} readOnly />
+
+          {isOwner && (
+            <button onClick={() => setEditMode(true)}>
+              방 수정
+            </button>
+          )}
+
+          <button
+            onClick={() => navigate(`/invite/${room.inviteCode}`)}
+          >
+            내 가능 날짜 수정하기
+          </button>
+        </>
+      )}
+
+    </div>
 
       <div className="card">
         <h2>방 참여자 명단</h2>
@@ -566,15 +809,21 @@ function RoomPage() {
               const dateParticipants = matched?.participants || [];
 
               return (
-                <div className="date-card" key={date}>
-                  <div className="date">{date}</div>
+              <div className="date-card" key={date}>
+                <div className="date">{date}</div>
 
-                  <div className="participants">
-                    참여자: {dateParticipants.join(", ")}
-                  </div>
-
-                  <div className="count">{dateParticipants.length}명</div>
+                <div className="participants">
+                  참여자: {dateParticipants.join(", ")}
                 </div>
+
+                <div className="count">{dateParticipants.length}명</div>
+
+                {isOwner && (
+                  <button onClick={() => confirmDate(date)}>
+                    이 날짜로 확정
+                  </button>
+                )}
+              </div>
               );
             })}
           </div>
@@ -593,14 +842,53 @@ function InvitePage() {
   const [selectedDates, setSelectedDates] = useState([]);
   const [error, setError] = useState("");
 
+  const leaveRoom = async () => {
+  const confirmed = window.confirm("정말 이 방에서 나가시겠습니까?");
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `http://localhost:8080/api/rooms/${room.id}/participants/me`,
+        {
+          method: "DELETE",
+          credentials: "include",
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+
+        alert(errorData?.message || "방 나가기 실패");
+        return;
+      }
+
+      alert("방에서 나갔습니다.");
+
+      setParticipantId(null);
+      setSelectedDates([]);
+
+      navigate(`/rooms/${room.id}`);
+    } catch (err) {
+      alert("방 나가기 중 오류가 발생했습니다.");
+    }
+  };
   useEffect(() => {
     fetch(`http://localhost:8080/api/rooms/invite/${inviteCode}`, {
       credentials: "include",
     })
-      .then((res) => {
+      .then(async (res) => {
         if (!res.ok) {
-          throw new Error("방 정보를 찾을 수 없습니다.");
+          const errorData = await res.json().catch(() => null);
+          const message = errorData?.message || "방 정보를 찾을 수 없습니다.";
+
+          alert(message);
+          navigate("/");
+          throw new Error(message);
         }
+
         return res.json();
       })
       .then((data) => {
@@ -751,6 +1039,9 @@ function InvitePage() {
         {participantId && (
           <>
             <p>가능한 날짜를 클릭해서 수정하세요.</p>
+            <button onClick={leaveRoom}>
+              방 나가기
+            </button>
 
             <FullCalendar
               plugins={[dayGridPlugin, interactionPlugin]}

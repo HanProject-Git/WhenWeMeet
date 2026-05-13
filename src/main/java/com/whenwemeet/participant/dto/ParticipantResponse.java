@@ -9,4 +9,6 @@ public class ParticipantResponse {
 
     private Long id;
     private String name;
+    
 }
+

@@ -13,4 +13,6 @@ public interface RoomRepository extends JpaRepository<Room, Long> {
     boolean existsByInviteCode(String inviteCode);
 
     List<Room> findByOwnerId(Long ownerId);
+
+    List<Room> findByOwnerIdAndDeletedFalse(Long ownerId);
 }

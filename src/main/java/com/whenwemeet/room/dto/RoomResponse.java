@@ -10,7 +10,9 @@ public record RoomResponse(
         String description,
         LocalDate startDate,
         LocalDate endDate,
-        String inviteCode
+        String inviteCode,
+        Long ownerId,
+        LocalDate confirmedDate
 ) {
     public static RoomResponse from(Room room) {
         return new RoomResponse(
@@ -19,7 +21,9 @@ public record RoomResponse(
                 room.getDescription(),
                 room.getStartDate(),
                 room.getEndDate(),
-                room.getInviteCode()
+                room.getInviteCode(),
+                room.getOwner().getId(),
+                room.getConfirmedDate()
         );
     }
 }

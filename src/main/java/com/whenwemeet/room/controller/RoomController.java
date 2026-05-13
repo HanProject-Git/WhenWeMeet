@@ -6,10 +6,13 @@ import lombok.RequiredArgsConstructor;
 import com.whenwemeet.room.dto.RoomResponse;
 import com.whenwemeet.room.dto.UpdateRoomRequest;
 
+import java.time.LocalDate;
+
 import org.springframework.web.bind.annotation.*;
 import com.whenwemeet.room.dto.UpdateRoomRequest;
 import jakarta.validation.Valid;
 import jakarta.servlet.http.HttpSession;
+import java.time.LocalDate;
 
 @RestController
 @RequiredArgsConstructor
@@ -56,9 +59,35 @@ public class RoomController {
 
     @DeleteMapping("/{roomId}")
     public void deleteRoom(
-            @PathVariable Long roomId
+            @PathVariable Long roomId,
+            HttpSession session
     ) {
-        roomService.deleteRoom(roomId);
+        Long memberId = (Long) session.getAttribute("LOGIN_MEMBER_ID");
+
+        if (memberId == null) {
+            throw new IllegalArgumentException("로그인이 필요합니다.");
+        }
+
+        roomService.deleteRoom(roomId, memberId);
+    }
+
+    @PostMapping("/{roomId}/confirm")
+    public void confirmDate(
+            @PathVariable Long roomId,
+            @RequestParam String date,
+            HttpSession session
+    ) {
+        Long memberId = (Long) session.getAttribute("LOGIN_MEMBER_ID");
+
+        if (memberId == null) {
+            throw new IllegalArgumentException("로그인이 필요합니다.");
+        }
+
+        roomService.confirmDate(
+                roomId,
+                memberId,
+                LocalDate.parse(date)
+        );
     }
 
 }

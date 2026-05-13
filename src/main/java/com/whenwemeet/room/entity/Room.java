@@ -29,6 +29,12 @@ public class Room {
 
     private LocalDateTime createdAt;
 
+    private boolean deleted = false;
+
+    private LocalDateTime deletedAt;
+
+    private LocalDate confirmedDate;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "owner_id")
     private Member owner;
@@ -59,6 +65,7 @@ public class Room {
             String description,
             LocalDate startDate,
             LocalDate endDate
+            
     ) {
         this.title = title;
         this.description = description;
@@ -68,5 +75,14 @@ public class Room {
 
     public boolean isOwner(Long memberId) {
         return owner != null && owner.getId().equals(memberId);
+    }
+
+    public void delete() {
+        this.deleted = true;
+        this.deletedAt = LocalDateTime.now();
+    }
+
+    public void confirmDate(LocalDate confirmedDate) {
+        this.confirmedDate = confirmedDate;
     }
 }
