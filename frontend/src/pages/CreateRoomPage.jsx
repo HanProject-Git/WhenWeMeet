@@ -58,7 +58,12 @@ function CreateRoomPage() {
           value={form.title}
           onChange={handleChange}
           placeholder="예: 주말 스터디 일정"
+          maxLength={30}
         />
+
+        <div className="text-count">
+            {form.title.length}/30
+        </div>
 
         <label>설명</label>
         <textarea
@@ -66,7 +71,12 @@ function CreateRoomPage() {
           value={form.description}
           onChange={handleChange}
           placeholder="어떤 모임인지 간단히 적어주세요"
+          maxLength={200}
         />
+
+        <div className="text-count">
+        {form.description.length}/200
+        </div>
 
         <label>시작일</label>
         <input

@@ -274,6 +274,25 @@ function HomePage() {
     }
   };
 
+  const goMyPage = async () => {
+    try {
+      const response = await fetch("http://localhost:8080/api/auth/me", {
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        alert("로그인 후 이용 가능합니다.");
+        navigate("/login");
+        return;
+      }
+
+      navigate("/mypage");
+    } catch (err) {
+      alert("로그인 확인 중 오류가 발생했습니다.");
+      navigate("/login");
+    }
+  };
+
   return (
     <div className="container">
       <section className="hero-section">
@@ -286,7 +305,7 @@ function HomePage() {
         </p>
 
         <div className="hero-actions">
-          <button onClick={() => navigate("/mypage")}>
+          <button onClick={goMyPage}>
             내 일정방 보기
           </button>
         </div>
@@ -728,15 +747,25 @@ function RoomPage() {
       alert("초대 링크 복사에 실패했습니다.");
     }
   };
+  const totalParticipantCount = participants.length;
 
-  const resultEvents = dateCounts.map((item) => ({
-    title: `${item.participants.length}명 가능`,
-    date: item.date,
-  }));
+  const resultEvents = dateCounts.map((item) => {
+    const availableCount = item.participants.length;
+    const isAllAvailable =
+      totalParticipantCount > 0 && availableCount === totalParticipantCount;
+
+    return {
+      title: isAllAvailable
+        ? `모두 가능`
+        : `${availableCount}명 가능`,
+      date: item.date,
+      className: isAllAvailable ? "event-all-available" : "event-partial-available",
+    };
+  });
 
   return (
     <div className="container">
-      <h1>{room.title}</h1>
+      <h1 className="room-title">{room.title}</h1>
 
       {room.confirmedDate && (
         <div className="card confirmed-card">
@@ -794,13 +823,14 @@ function RoomPage() {
       </button>
     )}
 
-    <div className="card">
-
+    <div className="card room-info-card">
       {editMode ? (
         <>
-          <label>제목</label>
+          <h2>방 정보 수정</h2>
+
           <input
             value={editForm.title}
+            maxLength={30}
             onChange={(e) =>
               setEditForm({
                 ...editForm,
@@ -809,9 +839,15 @@ function RoomPage() {
             }
           />
 
+          <div className="text-count">
+            {editForm.title.length}/30
+          </div>
+
           <label>설명</label>
+
           <textarea
             value={editForm.description}
+            maxLength={200}
             onChange={(e) =>
               setEditForm({
                 ...editForm,
@@ -819,6 +855,10 @@ function RoomPage() {
               })
             }
           />
+
+          <div className="text-count">
+            {editForm.description.length}/200
+          </div>
 
           <label>시작일</label>
           <input
@@ -844,49 +884,76 @@ function RoomPage() {
             }
           />
 
-          <button onClick={updateRoom}>
-            수정 저장
-          </button>
-
-          <button onClick={() => setEditMode(false)}>
-            취소
-          </button>
+          <button onClick={updateRoom}>수정 저장</button>
+          <button onClick={() => setEditMode(false)}>취소</button>
         </>
       ) : (
         <>
-          <p>{room.description}</p>
+          <div className="room-info-header">
+            <h2>방 정보</h2>
 
-          <p>
-            기간: {room.startDate} ~ {room.endDate}
-          </p>
-
-          <p>초대코드</p>
-          <input value={room.inviteCode} readOnly />
-
-          <p>초대 링크</p>
-
-          <div className="copy-row">
-            <input value={inviteUrl} readOnly />
-
-            <button onClick={copyInviteUrl}>
-              복사
-            </button>
+            {isOwner && (
+              <span className="owner-small-badge">
+                👑 방장
+              </span>
+            )}
           </div>
 
-          {isOwner && (
-            <button onClick={() => setEditMode(true)}>
-              방 수정
-            </button>
-          )}
+          <p className="room-description">
+            {room.description || "방 설명이 없습니다."}
+          </p>
 
-          <button
-            onClick={() => navigate(`/invite/${room.inviteCode}`)}
-          >
-            내 가능 날짜 수정하기
-          </button>
+          <div className="room-info-list">
+            <div className="room-info-row">
+              <span className="room-info-label">기간</span>
+              <span className="room-info-value">
+                {room.startDate} ~ {room.endDate}
+              </span>
+            </div>
+
+            <div className="room-info-row">
+              <span className="room-info-label">초대코드</span>
+
+              <div className="copy-row">
+                <input value={room.inviteCode} readOnly />
+                <button
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(room.inviteCode);
+                      alert("초대코드가 복사되었습니다.");
+                    } catch (err) {
+                      alert("초대코드 복사에 실패했습니다.");
+                    }
+                  }}
+                >
+                  복사
+                </button>
+              </div>
+            </div>
+
+            <div className="room-info-row">
+              <span className="room-info-label">초대링크</span>
+
+              <div className="copy-row">
+                <input value={inviteUrl} readOnly />
+                <button onClick={copyInviteUrl}>복사</button>
+              </div>
+            </div>
+          </div>
+
+          <div className="room-action-area">
+            {isOwner && (
+              <button onClick={() => setEditMode(true)}>
+                방 수정
+              </button>
+            )}
+
+            <button onClick={() => navigate(`/invite/${room.inviteCode}`)}>
+              내 가능 날짜 수정하기
+            </button>
+          </div>
         </>
       )}
-
     </div>
 
       <div className="card">
@@ -1178,7 +1245,7 @@ function InvitePage() {
 
   return (
     <div className="container">
-      <h1>{room.title}</h1>
+      <h1 className="room-title">{room.title}</h1>
       <p>{room.description}</p>
 
       <div className="card">
