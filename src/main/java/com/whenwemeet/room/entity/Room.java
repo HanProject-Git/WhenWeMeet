@@ -85,4 +85,8 @@ public class Room {
     public void confirmDate(LocalDate confirmedDate) {
         this.confirmedDate = confirmedDate;
     }
+
+    public void cancelConfirmedDate() {
+    this.confirmedDate = null;
+    }
 }

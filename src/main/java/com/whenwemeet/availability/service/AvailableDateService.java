@@ -24,6 +24,9 @@ public class AvailableDateService {
         Participant participant = participantRepository.findById(participantId)
                 .orElseThrow(() -> new IllegalArgumentException("참여자를 찾을 수 없습니다."));
 
+                if (participant.getRoom().getConfirmedDate() != null) {
+                    throw new IllegalArgumentException("일정이 확정된 방은 가능 날짜를 수정할 수 없습니다.");
+                    }
         availableDateRepository.deleteByParticipantId(participantId);
 
         List<AvailableDate> availableDates = request.dates().stream()

@@ -15,4 +15,6 @@ public interface RoomRepository extends JpaRepository<Room, Long> {
     List<Room> findByOwnerId(Long ownerId);
 
     List<Room> findByOwnerIdAndDeletedFalse(Long ownerId);
+
+    List<Room> findByOwner_Id(Long ownerId);
 }

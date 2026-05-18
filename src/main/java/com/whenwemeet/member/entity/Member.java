@@ -28,22 +28,39 @@ public class Member {
 
     private String provider;
 
-    public Member(String loginId, String password, String name) {
+    @Column(nullable = false, unique = true)
+    private String email;
+
+    public Member(String loginId, String password, String name, String email) {
         this.loginId = loginId;
         this.password = password;
         this.name = name;
+        this.email = email;
         this.provider = "LOCAL";
     }
 
-    public Member(String loginId, String password, String name, String provider) {
-        this.loginId = loginId;
-        this.password = password;
-        this.name = name;
-        this.provider = provider;
+    public static Member socialMember(
+            String loginId,
+            String name,
+            String provider
+    ) {
+        Member member = new Member();
+
+        member.loginId = loginId;
+        member.password = "SOCIAL_LOGIN";
+        member.name = name;
+        member.email = loginId;
+        member.provider = provider;
+
+        return member;
     }
 
     @PrePersist
     public void prePersist() {
         this.createdAt = LocalDateTime.now();
+    }
+
+    public void changePassword(String password) {
+        this.password = password;
     }
 }

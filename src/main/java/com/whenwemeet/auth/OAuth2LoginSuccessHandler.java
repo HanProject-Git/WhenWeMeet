@@ -37,7 +37,11 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
 
         Member member = memberRepository.findByLoginId(email)
                 .orElseGet(() -> memberRepository.save(
-                        new Member(email, "SOCIAL_LOGIN", name, "GOOGLE")
+                        Member.socialMember(
+                            email,
+                            name,
+                            "GOOGLE"
+                        )
                 ));
 
         request.getSession().setAttribute("LOGIN_MEMBER_ID", member.getId());

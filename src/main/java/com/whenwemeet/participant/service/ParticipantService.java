@@ -30,6 +30,9 @@ public class ParticipantService {
         Member member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new IllegalArgumentException("회원을 찾을 수 없습니다."));
 
+                if (room.getConfirmedDate() != null) {
+                throw new IllegalArgumentException("일정이 확정된 방에는 새로 참여할 수 없습니다.");
+                }
         return participantRepository.findByRoomIdAndMemberId(roomId, memberId)
                 .map(Participant::getId)
                 .orElseGet(() -> {
@@ -85,6 +88,9 @@ public class ParticipantService {
         Participant participant = participantRepository.findByRoomIdAndMemberId(roomId, memberId)
                 .orElseThrow(() -> new IllegalArgumentException("참여 중인 방이 아닙니다."));
 
+                if (participant.getRoom().getConfirmedDate() != null) {
+                        throw new IllegalArgumentException("일정이 확정된 방에서는 나갈 수 없습니다.");
+                        }
         availableDateRepository.deleteByParticipantId(participant.getId());
 
         participantRepository.delete(participant);

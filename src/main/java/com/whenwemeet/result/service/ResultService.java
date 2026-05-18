@@ -9,11 +9,13 @@ import org.springframework.stereotype.Service;
 import com.whenwemeet.room.dto.UpdateRoomRequest;
 import org.springframework.transaction.annotation.Transactional;
 import com.whenwemeet.result.dto.ParticipantInfoResponse;
+import com.whenwemeet.result.dto.PendingParticipantResponse;
 
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import com.whenwemeet.participant.entity.Participant;
 
 @Service
 @RequiredArgsConstructor
@@ -68,6 +70,26 @@ public class ResultService {
                 .map(Map.Entry::getKey)
                 .toList();
     }
+
+    public List<PendingParticipantResponse> getPendingParticipants(Long roomId) {
+
+        List<Participant> participants =
+                participantRepository.findByRoomId(roomId);
+
+        return participants.stream()
+                .filter(participant ->
+                        availableDateRepository
+                                .findByParticipantId(participant.getId())
+                                .isEmpty()
+                )
+                .map(participant ->
+                        new PendingParticipantResponse(
+                                participant.getId(),
+                                participant.getName()
+                        )
+                )
+                .toList();
+        }
 
     
 }

@@ -5,7 +5,8 @@ import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import CreateRoomPage from "./pages/CreateRoomPage";
-
+import googleImage from "./google.png";
+import whenwemeetImage from "./WhenWeMeet.png";
 
 function Navbar() {
   const navigate = useNavigate();
@@ -40,7 +41,7 @@ function Navbar() {
   return (
     <nav className="navbar">
       <Link to="/" className="nav-logo">
-        WhenWeMeet
+        <img src={whenwemeetImage} alt="WhenWeMeet" height="90px" />
       </Link>
 
       <div className="nav-menu">
@@ -147,18 +148,35 @@ function LoginPage() {
         />
 
         <button onClick={login}>로그인</button>
-        <div className="social-login-box">
-        <p>또는</p>
-
         <button
           type="button"
-          onClick={() => {
-            window.location.href =
-              "/oauth2/authorization/google";
-          }}
+          onClick={() => navigate("/find-login-id")}
         >
-          Google로 로그인
+          아이디 찾기
         </button>
+        <button
+          type="button"
+          onClick={() => navigate("/password-reset")}
+        >
+          비밀번호 찾기
+        </button>
+        <div className="social-login-box">
+          <button
+            type="button"
+            className="google-login-btn"
+            onClick={() => {
+              window.location.href =
+                "/oauth2/authorization/google";
+            }}
+          >
+            <img
+              src={googleImage}
+              alt="Google 로그인"
+              className="google-login-icon"
+            />
+
+            <span>Google로 로그인</span>
+          </button>
         </div>
       </div>
     </div>
@@ -167,11 +185,15 @@ function LoginPage() {
 
 function SignupPage() {
   const navigate = useNavigate();
+  const [emailCode, setEmailCode] = useState("");
+  const [emailVerified, setEmailVerified] = useState(false);
+  const [sendingEmailCode, setSendingEmailCode] = useState(false);
 
   const [form, setForm] = useState({
     loginId: "",
     password: "",
     name: "",
+    email: "",
   });
 
   const handleChange = (e) => {
@@ -181,7 +203,71 @@ function SignupPage() {
     });
   };
 
+  const sendEmailCode = async () => {
+    if (sendingEmailCode) return;
+
+    setSendingEmailCode(true);
+
+    try {
+      const response = await fetch("/api/auth/signup/email/code", {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: form.email,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+        alert(errorData?.message || "인증코드 발송 실패");
+        return;
+      }
+
+      alert("인증코드가 이메일로 발송되었습니다.");
+    } catch (err) {
+      alert("인증코드 발송 중 오류가 발생했습니다.");
+    } finally {
+      setSendingEmailCode(false);
+    }
+  };
+
+  const verifyEmailCode = async () => {
+    try {
+      const response = await fetch("/api/auth/signup/email/verify", {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: form.email,
+          code: emailCode,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+        alert(errorData?.message || "이메일 인증 실패");
+        return;
+      }
+
+      setEmailVerified(true);
+      alert("이메일 인증이 완료되었습니다.");
+    } catch (err) {
+      alert("이메일 인증 중 오류가 발생했습니다.");
+    }
+  };
+
   const signup = async () => {
+
+    if (!emailVerified) {
+      alert("이메일 인증을 먼저 완료해주세요.");
+      return;
+    }
+
     try {
       const response = await fetch("/api/auth/signup", {
         method: "POST",
@@ -193,7 +279,20 @@ function SignupPage() {
       });
 
       if (!response.ok) {
-        alert("회원가입 실패");
+        const errorText = await response.text();
+
+        try {
+          const errorData = JSON.parse(errorText);
+
+          alert(
+            errorData.message ||
+            Object.values(errorData)[0] ||
+            "회원가입 실패"
+          );
+        } catch {
+          alert(errorText || "회원가입 실패");
+        }
+
         return;
       }
 
@@ -215,6 +314,59 @@ function SignupPage() {
         <label>아이디</label>
         <input name="loginId" value={form.loginId} onChange={handleChange} />
 
+        <label>이메일</label>
+        <input
+          type="email"
+          name="email"
+          value={form.email}
+          onChange={handleChange}
+          placeholder="example@email.com"
+        />
+
+        <div className="email-verify-box">
+          <button
+            type="button"
+            onClick={sendEmailCode}
+            disabled={sendingEmailCode || emailVerified}
+          >
+            {sendingEmailCode
+              ? "인증코드 발송 중..."
+              : emailVerified
+              ? "이메일 인증 완료"
+              : "인증코드 발송"}
+          </button>
+
+          {sendingEmailCode && (
+            <p className="loading-text">
+              이메일을 보내는 중입니다. 잠시만 기다려주세요.
+            </p>
+          )}
+
+          {!emailVerified && (
+            <>
+              <label>이메일 인증코드</label>
+              <input
+                value={emailCode}
+                onChange={(e) => setEmailCode(e.target.value)}
+                placeholder="인증코드 6자리"
+              />
+
+              <button
+                type="button"
+                onClick={verifyEmailCode}
+              >
+                인증코드 확인
+              </button>
+            </>
+          )}
+
+          {emailVerified && (
+            <p className="verified-text">
+              이메일 인증이 완료되었습니다.
+            </p>
+          )}
+        </div>
+
         <label>비밀번호</label>
         <input
           type="password"
@@ -224,6 +376,289 @@ function SignupPage() {
         />
 
         <button onClick={signup}>회원가입</button>
+      </div>
+    </div>
+  );
+}
+
+function FindLoginIdPage() {
+  const navigate = useNavigate();
+
+  const [sending, setSending] = useState(false);
+
+  const [form, setForm] = useState({
+    name: "",
+    email: "",
+  });
+
+  const handleChange = (e) => {
+    setForm({
+      ...form,
+      [e.target.name]: e.target.value,
+    });
+  };
+
+  const findLoginId = async () => {
+    if (sending) {
+      return;
+    }
+
+    setSending(true);
+
+    try {
+      const response = await fetch("/api/auth/find-login-id", {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(form),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+        alert(errorData?.message || "아이디 찾기 실패");
+        return;
+      }
+
+      alert("입력한 이메일로 아이디를 발송했습니다.");
+      navigate("/login");
+    } catch (err) {
+      alert("아이디 찾기 중 오류가 발생했습니다.");
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <div className="container">
+      <div className="card">
+        <h1>아이디 찾기</h1>
+
+        <label>이름</label>
+        <input
+          name="name"
+          value={form.name}
+          onChange={handleChange}
+        />
+
+        <label>이메일</label>
+        <input
+          type="email"
+          name="email"
+          value={form.email}
+          onChange={handleChange}
+          placeholder="example@email.com"
+        />
+
+        <button onClick={findLoginId} disabled={sending}>
+          {sending ? "아이디 발송 중..." : "아이디 찾기"}
+        </button>
+
+        {sending && (
+          <p className="loading-text">
+            이메일을 보내는 중입니다. 잠시만 기다려주세요.
+          </p>
+        )}
+
+        <button
+          type="button"
+          onClick={() => navigate("/login")}
+        >
+          로그인으로 돌아가기
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function PasswordResetPage() {
+  const navigate = useNavigate();
+
+  const [step, setStep] = useState(1);
+
+  const [sendingCode, setSendingCode] = useState(false);
+
+  const [form, setForm] = useState({
+    loginId: "",
+    email: "",
+    code: "",
+    newPassword: "",
+  });
+
+  const handleChange = (e) => {
+    setForm({
+      ...form,
+      [e.target.name]: e.target.value,
+    });
+  };
+
+  const sendCode = async () => {
+    if (sendingCode) {
+      return;
+    }
+
+    setSendingCode(true);
+
+    try {
+      const response = await fetch("/api/auth/password-reset/code", {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          loginId: form.loginId,
+          email: form.email,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+        alert(errorData?.message || "인증코드 발송 실패");
+        return;
+      }
+
+      alert("인증코드가 이메일로 발송되었습니다.");
+      setStep(2);
+    } catch (err) {
+      alert("인증코드 발급 중 오류가 발생했습니다.");
+    } finally {
+      setSendingCode(false);
+    }
+  };
+
+  const verifyCode = async () => {
+    try {
+      const response = await fetch("/api/auth/password-reset/verify", {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          loginId: form.loginId,
+          email: form.email,
+          code: form.code,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+        alert(errorData?.message || "인증코드 확인 실패");
+        return;
+      }
+
+      alert("인증코드가 확인되었습니다.");
+      setStep(3);
+    } catch (err) {
+      alert("인증코드 확인 중 오류가 발생했습니다.");
+    }
+  };
+
+  const resetPassword = async () => {
+    try {
+      const response = await fetch("/api/auth/password-reset/confirm", {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          loginId: form.loginId,
+          email: form.email,
+          code: form.code,
+          newPassword: form.newPassword,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+        alert(errorData?.message || "비밀번호 변경 실패");
+        return;
+      }
+
+      alert("비밀번호가 변경되었습니다.");
+      navigate("/login");
+    } catch (err) {
+      alert("비밀번호 변경 중 오류가 발생했습니다.");
+    }
+  };
+
+  return (
+    <div className="container">
+      <div className="card">
+        <h1>비밀번호 찾기</h1>
+
+        <label>아이디</label>
+        <input
+          name="loginId"
+          value={form.loginId}
+          onChange={handleChange}
+          disabled={step !== 1}
+        />
+
+        <label>이메일</label>
+        <input
+          type="email"
+          name="email"
+          value={form.email}
+          onChange={handleChange}
+        />
+
+        {step === 1 && (
+          <button onClick={sendCode} disabled={sendingCode}>
+            {sendingCode ? "인증코드 발송 중..." : "인증코드 발급"}
+          </button>
+        )}
+
+        {sendingCode && (
+          <p className="loading-text">
+            이메일을 보내는 중입니다. 잠시만 기다려주세요.
+          </p>
+        )}
+        
+
+        {step >= 2 && (
+          <>
+            <label>인증코드</label>
+            <input
+              name="code"
+              value={form.code}
+              onChange={handleChange}
+              disabled={step === 3}
+            />
+
+            {step === 2 && (
+              <button onClick={verifyCode}>
+                인증코드 확인
+              </button>
+            )}
+          </>
+        )}
+
+        {step === 3 && (
+          <>
+            <label>새 비밀번호</label>
+            <input
+              type="password"
+              name="newPassword"
+              value={form.newPassword}
+              onChange={handleChange}
+            />
+
+            <button onClick={resetPassword}>
+              비밀번호 변경
+            </button>
+          </>
+        )}
+
+        <button
+          type="button"
+          onClick={() => navigate("/login")}
+        >
+          로그인으로 돌아가기
+        </button>
       </div>
     </div>
   );
@@ -558,12 +993,16 @@ function RoomPage() {
   const [participants, setParticipants] = useState([]);
   const [member, setMember] = useState(null);
   const [editMode, setEditMode] = useState(false);
+  const [pendingParticipants, setPendingParticipants] = useState([]);
   const [editForm, setEditForm] = useState({
     title: "",
     description: "",
     startDate: "",
     endDate: "",
   });
+
+  const [calendarTooltip, setCalendarTooltip] = useState(null);
+  
 
   useEffect(() => {
     fetch(`/api/rooms/${roomId}`, {
@@ -614,11 +1053,19 @@ function RoomPage() {
       .then((res) => res.json())
       .then((data) => setDateCounts(data));
 
+    fetch(`/api/rooms/${roomId}/result/pending`, {
+      credentials: "include",
+    })
+      .then((res) => res.json())
+      .then((data) => setPendingParticipants(data));
+
     fetch(`/api/rooms/${roomId}/result/common`, {
       credentials: "include",
     })
       .then((res) => res.json())
       .then((data) => setCommonDates(data));
+
+    
 
     fetch(`/api/rooms/${roomId}/participants`, {
       credentials: "include",
@@ -654,6 +1101,8 @@ function RoomPage() {
     room &&
     Number(room.ownerId) === Number(member.id);
 
+  const isConfirmed = !!room.confirmedDate;
+
   const confirmDate = async (date) => {
     const confirmed = window.confirm(`${date}로 일정을 확정하시겠습니까?`);
 
@@ -684,6 +1133,38 @@ function RoomPage() {
       });
     } catch (err) {
       alert("일정 확정 중 오류가 발생했습니다.");
+    }
+  };
+  
+  const cancelConfirmedDate = async () => {
+    const confirmed = window.confirm("확정된 일정을 취소하시겠습니까?");
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/rooms/${roomId}/confirm/cancel`, {
+        method: "POST",
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+        alert(errorData?.message || "일정 확정 취소 실패");
+        return;
+      }
+
+      const updatedRoom = await response.json();
+
+      setRoom({
+        ...updatedRoom,
+        confirmedDate: null,
+      });
+
+      alert("일정 확정이 취소되었습니다.");
+    } catch (err) {
+      alert("일정 확정 취소 중 오류가 발생했습니다.");
     }
   };
   
@@ -729,10 +1210,26 @@ function RoomPage() {
     }
   };
 
-  const resultEvents = dateCounts.map((item) => ({
-    title: `${item.participants.length}명 가능`,
-    date: item.date,
-  }));
+  const totalParticipantCount = participants.length;
+
+  const resultEvents = dateCounts.map((item) => {
+    const availableCount = item.participants.length;
+
+    const isAllAvailable =
+      totalParticipantCount > 0 &&
+      availableCount === totalParticipantCount;
+
+    return {
+      title: isAllAvailable ? "모두 가능" : `${availableCount}명 가능`,
+      date: item.date,
+      className: isAllAvailable
+        ? "event-all-available"
+        : "event-partial-available",
+      extendedProps: {
+        participants: item.participants,
+      },
+    };
+  });
 
   return (
     <div className="container">
@@ -749,6 +1246,15 @@ function RoomPage() {
           <p className="confirmed-date">
             {room.confirmedDate}
           </p>
+
+          {isOwner && (
+            <button
+              className="cancel-confirm-button"
+              onClick={cancelConfirmedDate}
+            >
+              확정 취소
+            </button>
+          )}
         </div>
       )}
     {isOwner && (
@@ -792,6 +1298,11 @@ function RoomPage() {
       >
         방 삭제
       </button>
+    )}
+    {isConfirmed && (
+      <div className="confirmed-lock-notice">
+        이 방은 일정이 확정되어 날짜 선택과 방 수정이 제한됩니다.
+      </div>
     )}
 
     <div className="card room-info-card">
@@ -903,15 +1414,17 @@ function RoomPage() {
           </div>
 
           <div className="room-action-area">
-            {isOwner && (
+            {isOwner && !isConfirmed && (
               <button onClick={() => setEditMode(true)}>
                 방 수정
               </button>
             )}
 
-            <button onClick={() => navigate(`/invite/${room.inviteCode}`)}>
-              내 가능 날짜 수정하기
-            </button>
+            {!isConfirmed && (
+              <button onClick={() => navigate(`/invite/${room.inviteCode}`)}>
+                내 가능 날짜 수정하기
+              </button>
+            )}
           </div>
         </>
       )}
@@ -951,7 +1464,39 @@ function RoomPage() {
         )}
       </div>
 
-      <div className="card">
+      {pendingParticipants.length > 0 && (
+        <div className="pending-section">
+          <h3>아직 날짜를 선택하지 않은 참가자</h3>
+
+          <div className="date-grid">
+            {pendingParticipants.map((participant) => (
+              <div
+                key={participant.participantId}
+                className="participant-card pending-card"
+              >
+                <div className="participant-avatar">
+                  {participant.name?.charAt(0)}
+                </div>
+
+                <div className="participant-info">
+                  <div className="participant-name">
+                    {participant.name}
+                  </div>
+
+                  <div className="participant-role pending-role">
+                    날짜 미선택
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div
+        className="card"
+        onMouseLeave={() => setCalendarTooltip(null)}
+      >
         <h2>일정 결과 캘린더</h2>
 
         <FullCalendar
@@ -960,7 +1505,64 @@ function RoomPage() {
           initialDate={room.startDate}
           events={resultEvents}
           height="auto"
+          eventMouseEnter={(info) => {
+            const participants =
+              info.event.extendedProps.participants || [];
+
+            setCalendarTooltip({
+              x: info.jsEvent.clientX,
+              y: info.jsEvent.clientY,
+              participants,
+            });
+          }}
+          eventMouseMove={(info) => {
+            setCalendarTooltip((prev) =>
+              prev
+                ? {
+                    ...prev,
+                    x: info.jsEvent.clientX,
+                    y: info.jsEvent.clientY,
+                  }
+                : null
+            );
+          }}
+          eventMouseLeave={() => {
+            setCalendarTooltip(null);
+          }}
         />
+
+        {calendarTooltip && (
+          <div
+            className="calendar-tooltip"
+            style={{
+              left: calendarTooltip.x + 12,
+              top: calendarTooltip.y + 12,
+            }}
+          >
+            <div className="calendar-tooltip-title">
+              가능한 참가자
+            </div>
+
+            {calendarTooltip.participants.length === 0 ? (
+              <div className="calendar-tooltip-empty">
+                참가자 없음
+              </div>
+            ) : (
+              calendarTooltip.participants.map((participant) => (
+                <div
+                  key={participant.id}
+                  className="calendar-tooltip-user"
+                >
+                  <strong>{participant.name}</strong>
+
+                  {participant.loginId && (
+                    <span>@{participant.loginId}</span>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
+        )}
       </div>
 
       <div className="card">
@@ -999,7 +1601,7 @@ function RoomPage() {
                 ))}
               </div>
 
-              {isOwner && (
+              {isOwner && !isConfirmed && (
                 <button
                   className="confirm-date-button"
                   onClick={() => confirmDate(date)}
@@ -1151,8 +1753,19 @@ function InvitePage() {
   const handleDateClick = (info) => {
     const clickedDate = info.dateStr;
 
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const currentDate = new Date(clickedDate);
+
+    if (currentDate < today) {
+      return;
+    }
+
     if (selectedDates.includes(clickedDate)) {
-      setSelectedDates(selectedDates.filter((date) => date !== clickedDate));
+      setSelectedDates(
+        selectedDates.filter((d) => d !== clickedDate)
+      );
     } else {
       setSelectedDates([...selectedDates, clickedDate]);
     }
@@ -1235,6 +1848,16 @@ function InvitePage() {
               dateClick={handleDateClick}
               events={events}
               height="auto"
+              dayCellClassNames={(arg) => {
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+
+                if (arg.date < today) {
+                  return ["past-day"];
+                }
+
+                return [];
+              }}
             />
 
             <button onClick={saveAvailableDates}>가능 날짜 저장</button>
@@ -1254,11 +1877,19 @@ function App() {
         <Route path="/" element={<HomePage />} />
         <Route path="/rooms/new" element={<CreateRoomPage />} />
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/password-reset" element={<PasswordResetPage />} />
+        <Route path="/find-login-id" element={<FindLoginIdPage />} />
         <Route path="/signup" element={<SignupPage />} />
         <Route path="/rooms/:roomId" element={<RoomPage />} />
         <Route path="/invite/:inviteCode" element={<InvitePage />} />
         <Route path="/mypage" element={<MyPage />} />
       </Routes>
+
+        <footer className="footer">
+          <p>문의사항은 "whenwemeet.service@gmail.com" 으로 보내주세요!</p>
+          <p>© 2026 WhenWeMeet. All rights reserved.</p>
+          <br></br>
+        </footer>
     </>
   );
 }

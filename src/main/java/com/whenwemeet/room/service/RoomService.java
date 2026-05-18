@@ -18,6 +18,9 @@ import java.util.List;
 import java.time.LocalDate;
 import com.whenwemeet.participant.repository.ParticipantRepository;
 
+import com.whenwemeet.participant.entity.Participant;
+import com.whenwemeet.participant.repository.ParticipantRepository;
+
 @Service
 @RequiredArgsConstructor
 public class RoomService {
@@ -47,6 +50,15 @@ public class RoomService {
         );
 
         Room savedRoom = roomRepository.save(room);
+
+        Participant ownerParticipant =
+                new Participant(
+                        owner.getName(),
+                        savedRoom,
+                        owner
+                );
+
+        participantRepository.save(ownerParticipant);
 
         return savedRoom.getId();
     }
@@ -89,6 +101,9 @@ public class RoomService {
         Room room = roomRepository.findById(roomId)
                 .orElseThrow(() -> new IllegalArgumentException("일정방을 찾을 수 없습니다."));
 
+                if (room.getConfirmedDate() != null) {
+                throw new IllegalArgumentException("일정이 확정된 방은 수정할 수 없습니다.");
+}
         room.update(
                 request.title(),
                 request.description(),
@@ -157,5 +172,26 @@ public class RoomService {
                 .filter(room -> !room.isOwner(memberId))
                 .map(RoomResponse::from)
                 .toList();
+        }
+        @Transactional
+        public RoomResponse cancelConfirmedDate(Long roomId, Long memberId) {
+        Room room = roomRepository.findById(roomId)
+                .orElseThrow(() -> new IllegalArgumentException("일정방을 찾을 수 없습니다."));
+
+        if (room.isDeleted()) {
+                throw new IllegalArgumentException("삭제된 방입니다.");
+        }
+
+        if (!room.isOwner(memberId)) {
+                throw new IllegalArgumentException("방장만 일정 확정을 취소할 수 있습니다.");
+        }
+
+        if (room.getConfirmedDate() == null) {
+                throw new IllegalArgumentException("확정된 일정이 없습니다.");
+        }
+
+        room.cancelConfirmedDate();
+
+        return RoomResponse.from(room);
         }
 }
