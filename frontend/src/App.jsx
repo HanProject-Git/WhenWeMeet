@@ -1001,7 +1001,7 @@ function RoomPage() {
     endDate: "",
   });
 
-  const [calendarTooltip, setCalendarTooltip] = useState(null);
+  const [selectedCalendarResult, setSelectedCalendarResult] = useState(null);
   
 
   useEffect(() => {
@@ -1493,10 +1493,7 @@ function RoomPage() {
         </div>
       )}
 
-      <div
-        className="card"
-        onMouseLeave={() => setCalendarTooltip(null)}
-      >
+      <div className="card">
         <h2>일정 결과 캘린더</h2>
 
         <FullCalendar
@@ -1505,64 +1502,64 @@ function RoomPage() {
           initialDate={room.startDate}
           events={resultEvents}
           height="auto"
+          eventClick={(info) => {
+            const participants =
+              info.event.extendedProps.participants || [];
+
+            setSelectedCalendarResult({
+              date: info.event.startStr,
+              title: info.event.title,
+              participants,
+            });
+          }}
           eventMouseEnter={(info) => {
             const participants =
               info.event.extendedProps.participants || [];
 
-            setCalendarTooltip({
-              x: info.jsEvent.clientX,
-              y: info.jsEvent.clientY,
+            setSelectedCalendarResult({
+              date: info.event.startStr,
+              title: info.event.title,
               participants,
             });
           }}
-          eventMouseMove={(info) => {
-            setCalendarTooltip((prev) =>
-              prev
-                ? {
-                    ...prev,
-                    x: info.jsEvent.clientX,
-                    y: info.jsEvent.clientY,
-                  }
-                : null
-            );
-          }}
-          eventMouseLeave={() => {
-            setCalendarTooltip(null);
-          }}
         />
 
-        {calendarTooltip && (
-          <div
-            className="calendar-tooltip"
-            style={{
-              left: calendarTooltip.x + 12,
-              top: calendarTooltip.y + 12,
-            }}
-          >
-            <div className="calendar-tooltip-title">
-              가능한 참가자
-            </div>
-
-            {calendarTooltip.participants.length === 0 ? (
-              <div className="calendar-tooltip-empty">
-                참가자 없음
+        <div className="date-card common-date-card" style={{ marginTop: "16px" }}>
+          {selectedCalendarResult ? (
+            <>
+              <div className="common-badge">
+                선택한 날짜
               </div>
-            ) : (
-              calendarTooltip.participants.map((participant) => (
-                <div
-                  key={participant.id}
-                  className="calendar-tooltip-user"
-                >
-                  <strong>{participant.name}</strong>
 
-                  {participant.loginId && (
-                    <span>@{participant.loginId}</span>
-                  )}
+              <div className="date">
+                {selectedCalendarResult.date}
+              </div>
+
+              <div className="count">
+                {selectedCalendarResult.title}
+              </div>
+
+              {selectedCalendarResult.participants.length === 0 ? (
+                <p>가능한 참가자가 없습니다.</p>
+              ) : (
+                <div className="participants participant-chip-list">
+                  {selectedCalendarResult.participants.map((participant) => (
+                    <span key={participant.id} className="participant-chip">
+                      {participant.name}
+                      {participant.loginId && (
+                        <small>@{participant.loginId}</small>
+                      )}
+                    </span>
+                  ))}
                 </div>
-              ))
-            )}
-          </div>
-        )}
+              )}
+            </>
+          ) : (
+            <p style={{ margin: 0 }}>
+              캘린더의 초록색/주황색 일정 표시를 클릭하면 가능한 참가자가 여기에 표시됩니다.
+            </p>
+          )}
+        </div>
       </div>
 
       <div className="card">
