@@ -187,9 +187,6 @@ function LoginPage() {
 
 function SignupPage() {
   const navigate = useNavigate();
-  const [emailCode, setEmailCode] = useState("");
-  const [emailVerified, setEmailVerified] = useState(false);
-  const [sendingEmailCode, setSendingEmailCode] = useState(false);
 
   const [form, setForm] = useState({
     loginId: "",
@@ -265,10 +262,7 @@ function SignupPage() {
 
   const signup = async () => {
 
-    if (!emailVerified) {
-      alert("이메일 인증을 먼저 완료해주세요.");
-      return;
-    }
+    
 
     try {
       const response = await fetch(`${API_BASE_URL}/api/auth/signup`, {

@@ -51,9 +51,7 @@ public class MemberService {
 
     public MemberResponse signup(SignupRequest request) {
 
-        if (!Boolean.TRUE.equals(verifiedSignupEmails.get(request.email()))) {
-            throw new IllegalArgumentException("이메일 인증이 필요합니다.");
-        }
+        
 
         if (memberRepository.existsByLoginId(request.loginId())) {
             throw new IllegalArgumentException("이미 사용 중인 아이디입니다.");
@@ -72,7 +70,6 @@ public class MemberService {
 
         Member savedMember = memberRepository.save(member);
 
-        verifiedSignupEmails.remove(request.email());
 
         return MemberResponse.from(savedMember);
     }
