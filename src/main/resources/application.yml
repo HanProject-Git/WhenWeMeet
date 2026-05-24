@@ -55,3 +55,6 @@ server:
 
 app:
   frontend-url: ${FRONTEND_URL:http://localhost:5173}
+
+starttls:
+  enable: true
